@@ -12,111 +12,136 @@ const FabricCanvas = () => {
   useEffect(() => {
     const canvas = new Canvas(canvasRef.current);
 
-    // ✅ enable drawing
     canvas.isDrawingMode = true;
 
-    // ✅ IMPORTANT: create brush manually
     const brush = new PencilBrush(canvas);
     brush.width = brushSize;
     brush.color = brushColor;
-
     canvas.freeDrawingBrush = brush;
 
     fabricRef.current = canvas;
+
+    // ✅ Allow drop
+    canvas.upperCanvasEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    canvas.upperCanvasEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+
+      const type = e.dataTransfer.getData("type");
+
+      const rect = canvas.upperCanvasEl.getBoundingClientRect();
+
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      addObject(type, x, y);
+    });
 
     return () => {
       canvas.dispose();
     };
   }, []);
 
-  // Update brush color
+  // 🎯 Add object at drop position
+  const addObject = (type, left, top) => {
+    const canvas = fabricRef.current;
+
+    let obj;
+
+    if (type === "rect") {
+      obj = new Rect({
+        left,
+        top,
+        width: 120,
+        height: 80,
+        fill: "blue",
+      });
+    }
+
+    if (type === "text") {
+      obj = new IText("Edit me", {
+        left,
+        top,
+        fontSize: 20,
+      });
+    }
+
+    if (obj) {
+      canvas.add(obj);
+      canvas.setActiveObject(obj);
+    }
+  };
+
+  // Brush updates
   useEffect(() => {
-    if (fabricRef.current) {
+    if (fabricRef.current?.freeDrawingBrush) {
       fabricRef.current.freeDrawingBrush.color = brushColor;
     }
   }, [brushColor]);
 
-  // Update brush size
   useEffect(() => {
-    if (fabricRef.current) {
+    if (fabricRef.current?.freeDrawingBrush) {
       fabricRef.current.freeDrawingBrush.width = brushSize;
     }
   }, [brushSize]);
 
-  // Toggle draw mode
   const toggleDrawing = () => {
     const canvas = fabricRef.current;
     canvas.isDrawingMode = !canvas.isDrawingMode;
     setIsDrawing(canvas.isDrawingMode);
   };
 
-  // Add rectangle
-  const addRectangle = () => {
-    const rect = new Rect({
-      left: 100,
-      top: 100,
-      width: 120,
-      height: 80,
-      fill: "blue",
-    });
-
-    fabricRef.current.add(rect);
-  };
-
-  // Add editable text
-  const addText = () => {
-    const text = new IText("Edit me", {
-      left: 150,
-      top: 150,
-      fontSize: 20,
-    });
-
-    fabricRef.current.add(text);
-  };
-
-  // Clear canvas
-  const clearCanvas = () => {
-    fabricRef.current.clear();
-  };
-
-  // Save image
-  const saveImage = () => {
-    const dataURL = fabricRef.current.toDataURL({
-      format: "png",
-    });
-
-    const link = document.createElement("a");
-    link.href = dataURL;
-    link.download = "canvas.png";
-    link.click();
-  };
-
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Fabric.js Drawing Canvas</h2>
+    <div style={{ display: "flex", padding: 20, gap: 20 }}>
+      
+      {/* 🔥 Sidebar */}
+      <div style={{ width: 150 }}>
+        <h4>Drag Items</h4>
 
-      {/* Controls */}
-      <div style={{ marginBottom: 10 }}>
+        <div
+          draggable
+          onDragStart={(e) => e.dataTransfer.setData("type", "rect")}
+          style={{
+            padding: 10,
+            border: "1px solid black",
+            marginBottom: 10,
+            cursor: "grab",
+          }}
+        >
+          Rectangle
+        </div>
+
+        <div
+          draggable
+          onDragStart={(e) => e.dataTransfer.setData("type", "text")}
+          style={{
+            padding: 10,
+            border: "1px solid black",
+            cursor: "grab",
+          }}
+        >
+          Text
+        </div>
+      </div>
+
+      {/* 🎯 Canvas Area */}
+      <div>
+        <h2>Fabric Drag & Drop Canvas</h2>
+
         <button onClick={toggleDrawing}>
           {isDrawing ? "Disable Draw" : "Enable Draw"}
         </button>
 
-        <button onClick={addRectangle}>Add Rectangle</button>
-        <button onClick={addText}>Add Text</button>
-        <button onClick={clearCanvas}>Clear</button>
-        <button onClick={saveImage}>Save</button>
+        <br /><br />
 
-        <br />
-        <br />
-
-        {/* Color */}
         <input
           type="color"
           value={brushColor}
           onChange={(e) => setBrushColor(e.target.value)}
         />
 
-        {/* Size */}
         <input
           type="range"
           min="1"
@@ -124,15 +149,16 @@ const FabricCanvas = () => {
           value={brushSize}
           onChange={(e) => setBrushSize(parseInt(e.target.value))}
         />
-      </div>
 
-      {/* Canvas */}
-      <canvas
-        ref={canvasRef}
-        width={900}
-        height={500}
-        style={{ border: "1px solid #ccc" }}
-      />
+        <br /><br />
+
+        <canvas
+          ref={canvasRef}
+          width={900}
+          height={500}
+          style={{ border: "1px solid #ccc" }}
+        />
+      </div>
     </div>
   );
 };
